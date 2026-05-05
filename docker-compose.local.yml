@@ -1,0 +1,81 @@
+volumes:
+  cookie_cutter_local_postgres_data: {}
+  cookie_cutter_local_postgres_data_backups: {}
+  cookie_cutter_local_redis_data: {}
+
+services:
+  django: &django
+    build:
+      context: .
+      dockerfile: ./compose/local/django/Dockerfile
+    image: cookie_cutter_local_django
+    container_name: cookie_cutter_local_django
+    depends_on:
+      - postgres
+      - redis
+      - mailpit
+    volumes:
+      - /app/.venv
+      - .:/app:z
+    env_file:
+      - ./.envs/.local/.django
+      - ./.envs/.local/.postgres
+    ports:
+      - '8000:8000'
+    command: /start
+
+  postgres:
+    build:
+      context: .
+      dockerfile: ./compose/production/postgres/Dockerfile
+    image: cookie_cutter_production_postgres
+    container_name: cookie_cutter_local_postgres
+    volumes:
+      - cookie_cutter_local_postgres_data:/var/lib/postgresql/18/docker
+      - cookie_cutter_local_postgres_data_backups:/backups
+    ports:
+      - "5434:5432"
+    env_file:
+      - ./.envs/.local/.postgres
+
+  mailpit:
+    image: docker.io/axllent/mailpit:latest
+    container_name: cookie_cutter_local_mailpit
+    ports:
+      - "8025:8025"
+
+  redis:
+    image: docker.io/redis:7.2
+    container_name: cookie_cutter_local_redis
+    volumes:
+      - cookie_cutter_local_redis_data:/data
+
+  celeryworker:
+    <<: *django
+    image: cookie_cutter_local_celeryworker
+    container_name: cookie_cutter_local_celeryworker
+    depends_on:
+      - redis
+      - postgres
+      - mailpit
+    ports: []
+    command: /start-celeryworker
+
+  celerybeat:
+    <<: *django
+    image: cookie_cutter_local_celerybeat
+    container_name: cookie_cutter_local_celerybeat
+    depends_on:
+      - redis
+      - postgres
+      - mailpit
+    ports: []
+    command: /start-celerybeat
+
+  flower:
+    <<: *django
+    image: cookie_cutter_local_flower
+    container_name: cookie_cutter_local_flower
+    ports:
+      - '5555:5555'
+    command: /start-flower
