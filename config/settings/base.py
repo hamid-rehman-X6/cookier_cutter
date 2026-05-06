@@ -83,7 +83,6 @@ THIRD_PARTY_APPS = [
     "rest_framework.authtoken",
     "corsheaders",
     "drf_spectacular",
-    "djangorestframework-simplejwt"
 ]
 
 LOCAL_APPS = [
